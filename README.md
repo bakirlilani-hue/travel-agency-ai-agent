@@ -68,6 +68,6 @@ The workflow has been developed and tested in n8n. It is intended as a demonstra
 
 The repository includes a sanitised n8n workflow JSON file.
 
-To use the workflow, import the JSON into n8n and configure your own Google Gemini, Google Sheets and configure your own Google Gemini, Google Sheets and Gmail connections, including the relevant spreadsheet settings.
+To use the workflow, import the JSON into n8n and configure your own Google Gemini, Google Sheets and Gmail connections, including the relevant spreadsheet settings.
 
 No live travel booking or availability-checking functionality is included.
