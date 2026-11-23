@@ -1,0 +1,985 @@
+{
+  "name": "Travel Agency AI Agent – Customer Enquiry Automation",
+  "nodes": [
+    {
+      "parameters": {
+        "options": {
+          "responseMode": "lastNode"
+        }
+      },
+      "type": "@n8n/n8n-nodes-langchain.chatTrigger",
+      "typeVersion": 1.5,
+      "position": [
+        0,
+        0
+      ],
+      "id": "1c96ec1c-9233-47a9-a241-d2a31091e523",
+      "name": "When chat message received"
+    },
+    {
+      "parameters": {
+        "hasOutputParser": true,
+        "options": {
+          "systemMessage": "You are a friendly, professional customer service assistant for a travel agency.\n\nYour responsibilities:\n- Answer general questions about holiday destinations.\n- Help customers submit new holiday enquiries.\n- Help customers request changes to existing enquiries.\n- Collect and remember information throughout the conversation.\n- Keep responses natural, clear, concise and helpful.\n\nCommunication rules:\n- Use a friendly, professional and conversational tone.\n- Keep responses short, usually 1–3 sentences.\n- Avoid repeating information unnecessarily.\n- Ask only for information that is still missing.\n- When several details are missing, group related questions naturally.\n- Acknowledge the customer's preferences without making assumptions.\n- Avoid overly formal, robotic or repetitive language.\n- Do not repeatedly greet the customer during the same conversation.\n\nAccuracy and safety:\n- Never invent prices, availability, customer information or booking details.\n- Never claim to have checked live bookings or made a reservation.\n- Never claim an enquiry has been saved, updated or emailed. Other workflow nodes handle these actions.\n- Never promise that staff will contact the customer.\n- Do not call external tools.\n- If information is uncertain, explain this clearly.\n\nStructured output:\nAlways return an object matching the connected Structured Output Parser schema.\n\nThe response field contains your customer-facing message.\n\nChoose exactly one action:\n\nchat:\n- General questions or conversations.\n- Missing information or clarification needed.\n- Requests to update an enquiry without an Enquiry ID.\n- Follow-up conversations after an enquiry has already been submitted in the current conversation.\n\nnew_enquiry:\n- Only select when the customer has provided all five required details: customer name, destination, budget, travel dates and number of travellers.\n- Do not select if an enquiry has already been submitted in the current conversation.\n- If information is missing, select chat and ask for it.\n- Never invent missing details.\n\nupdate_enquiry:\n- Only select when the customer requests changes to an existing enquiry AND provides an Enquiry ID.\n- Preserve the exact Enquiry ID supplied by the customer.\n- Include only information the customer wants to change, where possible.\n- If the Enquiry ID is missing, select chat and ask for it.\n\nCustomer information fields:\n- customer_name\n- destination\n- budget\n- travel_dates\n- number_of_travellers\n- customer_enquiry\n\nUse information actually provided by the customer.\nRemember relevant details from earlier messages.\nUse an empty string (\"\") for unknown information. Never use null.\n\nFor customer_enquiry, provide a concise summary of the customer's holiday request and preferences.\n\nEnquiry ID rules:\n- Copy customer-provided Enquiry IDs exactly into enquiry_id.\n- Never invent or generate an Enquiry ID.\n- Use an empty string when no Enquiry ID is provided.\n\nMissing information rules:\n- Check all five required fields before selecting new_enquiry.\n- Ask clear questions about missing information.\n- Do not repeatedly ask for details already provided.\n- Never select new_enquiry until all five fields are available.\n\nConfirmation rules:\n- For new_enquiry and update_enquiry, acknowledge that you have the details without claiming the action has been completed.\n- The workflow is responsible for confirming successful saves, updates and email notifications.\n- If uncertain whether an enquiry has already been submitted, select chat and ask for clarification.\n\nReturn only the structured output required by the parser.\nBudget clarification rules:\n- A budget must contain an approximate monetary amount or range.\n- If the customer says their budget is flexible, unlimited, undecided or unknown without providing an amount, treat the budget as missing.\n- Select chat and politely ask for an approximate budget or price range.\n- Never select new_enquiry until a monetary budget has been provided.\n- Do not invent a budget.\nBooking request rules:\n- If a customer asks to book a flight, hotel or holiday directly, clearly explain that you can only help submit an enquiry.\n- Never imply that a booking, reservation or ticket has been confirmed.\n- Explain that prices and availability have not been checked.\n- Offer to collect the customer's details for an enquiry.\n- Keep the explanation brief and friendly."
+        }
+      },
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 3.1,
+      "position": [
+        224,
+        0
+      ],
+      "id": "3d17d4ee-4317-48f0-842f-6cc767db899f",
+      "name": "AI Agent"
+    },
+    {
+      "parameters": {
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.lmChatGoogleGemini",
+      "typeVersion": 1.2,
+      "position": [
+        96,
+        208
+      ],
+      "id": "d524a622-0132-4470-b186-e69f88313594",
+      "name": "Google Gemini Chat Model"
+    },
+    {
+      "parameters": {},
+      "type": "@n8n/n8n-nodes-langchain.memoryBufferWindow",
+      "typeVersion": 1.4,
+      "position": [
+        240,
+        208
+      ],
+      "id": "9fbc9f55-60ee-4e5f-a8b7-016c60a0d212",
+      "name": "Simple Memory"
+    },
+    {
+      "parameters": {
+        "schemaType": "manual",
+        "inputSchema": "\n{\n  \"type\": \"object\",\n  \"properties\": {\n    \"response\": {\n      \"type\": \"string\"\n    },\n    \"action\": {\n      \"type\": \"string\",\n      \"enum\": [\"chat\", \"new_enquiry\", \"update_enquiry\"]\n    },\n    \"customer_name\": {\n      \"type\": \"string\"\n    },\n    \"enquiry_id\": {\n  \"type\": \"string\"\n},\n    \"destination\": {\n      \"type\": \"string\"\n    },\n    \"budget\": {\n      \"type\": \"string\"\n    },\n    \"travel_dates\": {\n      \"type\": \"string\"\n    },\n    \"number_of_travellers\": {\n      \"type\": \"string\"\n    },\n    \"customer_enquiry\": {\n      \"type\": \"string\"\n    }\n  },\n  \"required\": [\n    \"response\",\n    \"action\"\n  ]\n}\n"
+      },
+      "type": "@n8n/n8n-nodes-langchain.outputParserStructured",
+      "typeVersion": 1.3,
+      "position": [
+        672,
+        320
+      ],
+      "id": "fb257870-488c-40dc-b480-fe40d5e62d51",
+      "name": "Structured Output Parser"
+    },
+    {
+      "parameters": {
+        "rules": {
+          "values": [
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 4
+                },
+                "conditions": [
+                  {
+                    "leftValue": "={{ $json.output.action }}",
+                    "rightValue": "chat",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    },
+                    "id": "96a1b726-98d9-4022-94a4-fbbc71f9edb6"
+                  }
+                ],
+                "combinator": "and"
+              }
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 4
+                },
+                "conditions": [
+                  {
+                    "id": "9deb1ae6-7804-49fe-9d17-d2837aaff786",
+                    "leftValue": "={{ $json.output.action }}",
+                    "rightValue": "new_enquiry",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals",
+                      "name": "filter.operator.equals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              }
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 4
+                },
+                "conditions": [
+                  {
+                    "id": "f6a746c1-1580-4599-9cb2-8a057655b014",
+                    "leftValue": "={{ $json.output.action }}",
+                    "rightValue": "update_enquiry",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals",
+                      "name": "filter.operator.equals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              }
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.switch",
+      "typeVersion": 3.5,
+      "position": [
+        592,
+        0
+      ],
+      "id": "3e4eba22-0d9c-4486-872e-87611a1658e0",
+      "name": "Switch"
+    },
+    {
+      "parameters": {
+        "operation": "append",
+        "documentId": {
+          "__rl": true,
+          "value": "REPLACE_WITH_SPREADSHEET_ID",
+          "mode": "id"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": "REPLACE_WITH_SHEET_NAME",
+          "mode": "name"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "Customer Name": "={{ $('AI Agent').first().json.output.customer_name }}",
+            "Destination": "={{ $('AI Agent').first().json.output.destination }}",
+            "Number of Travellers": "={{ $('AI Agent').first().json.output.number_of_travellers }}",
+            "Status": "New",
+            "Enquiry ID": "={{ $('Crypto').first().json.enquiry_id }}",
+            "Budget": "={{ $('AI Agent').first().json.output.budget }}",
+            "Travel Dates": "={{ $('AI Agent').first().json.output.travel_dates }}",
+            "Customer Enquiry": "={{ $('AI Agent').first().json.output.customer_enquiry }}"
+          },
+          "matchingColumns": [],
+          "schema": [
+            {
+              "id": "Customer Name",
+              "displayName": "Customer Name",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Destination",
+              "displayName": "Destination",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Budget",
+              "displayName": "Budget",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Travel Dates",
+              "displayName": "Travel Dates",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Number of Travellers",
+              "displayName": "Number of Travellers",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Customer Enquiry",
+              "displayName": "Customer Enquiry",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Status",
+              "displayName": "Status",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Enquiry ID",
+              "displayName": "Enquiry ID",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.7,
+      "position": [
+        1712,
+        32
+      ],
+      "id": "1738d763-537b-4e61-b67f-dae37afef287",
+      "name": "Append row in sheet",
+      "onError": "continueErrorOutput"
+    },
+    {
+      "parameters": {
+        "sendTo": "agency@example.com",
+        "subject": "New Travel Agency Customer Enquiry",
+        "message": "={{ `A new customer enquiry has been received.\n\nCustomer Name: ${$json[\"Customer Name\"]}\nDestination: ${$json[\"Destination\"]}\nBudget: ${$json[\"Budget\"]}\nTravel Dates: ${$json[\"Travel Dates\"]}\nNumber of Travellers: ${$json[\"Number of Travellers\"]}\nCustomer Enquiry: ${$json[\"Customer Enquiry\"]}\nStatus: ${$json[\"Status\"]}` }}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.gmail",
+      "typeVersion": 2.2,
+      "position": [
+        1936,
+        32
+      ],
+      "id": "63db65fe-d201-4734-b296-3f2b14141e00",
+      "name": "Send a message",
+      "onError": "continueErrorOutput"
+    },
+    {
+      "parameters": {
+        "documentId": {
+          "__rl": true,
+          "value": "REPLACE_WITH_SPREADSHEET_ID",
+          "mode": "id"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": "REPLACE_WITH_SHEET_NAME",
+          "mode": "name"
+        },
+        "filtersUI": {
+          "values": [
+            {
+              "lookupColumn": "Enquiry ID",
+              "lookupValue": "={{ $json.output.enquiry_id }}"
+            }
+          ]
+        },
+        "options": {
+          "returnFirstMatch": false
+        }
+      },
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.7,
+      "position": [
+        1760,
+        160
+      ],
+      "id": "244cd00e-4dce-4245-a167-ee239c446c6d",
+      "name": "Get row(s) in sheet",
+      "alwaysOutputData": true
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 4
+          },
+          "conditions": [
+            {
+              "id": "a2d40f5e-c38d-4b0a-8573-07c16ecf7a66",
+              "leftValue": "={{ $json.row_number }}",
+              "rightValue": "={{ $json.row_number }}",
+              "operator": {
+                "type": "number",
+                "operation": "exists",
+                "singleValue": true
+              }
+            },
+            {
+              "id": "eddfd0f1-99f5-4a6e-b3ee-576dd866ac33",
+              "leftValue": "={{ $input.all().length }}",
+              "rightValue": 1,
+              "operator": {
+                "type": "number",
+                "operation": "equals"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.4,
+      "position": [
+        1984,
+        160
+      ],
+      "id": "a7a07caa-c6c6-41a1-95f1-f4df2c4b4a1f",
+      "name": "If"
+    },
+    {
+      "parameters": {
+        "operation": "update",
+        "documentId": {
+          "__rl": true,
+          "value": "REPLACE_WITH_SPREADSHEET_ID",
+          "mode": "id"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": "REPLACE_WITH_SHEET_NAME",
+          "mode": "name"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "row_number": "={{ $json.row_number }}",
+            "Budget": "={{ $('AI Agent').first().json.output.budget?.trim() || $('Get row(s) in sheet').first().json['Budget'] }}",
+            "Destination": "={{ $('AI Agent').first().json.output.destination?.trim() || $('Get row(s) in sheet').first().json['Destination'] }}",
+            "Customer Name": "={{ $('AI Agent').first().json.output.customer_name?.trim() || $('Get row(s) in sheet').first().json['Customer Name'] }}",
+            "Travel Dates": "={{ $('AI Agent').first().json.output.travel_dates?.trim() || $('Get row(s) in sheet').first().json['Travel Dates'] }}",
+            "Customer Enquiry": "=\n{{ (() => {\n  const ai = $('AI Agent').first().json.output;\n  const old = $('Get row(s) in sheet').first().json;\n  const name = ai.customer_name?.trim() || old['Customer Name'];\n  const destination = ai.destination?.trim() || old['Destination'];\n  const budget = ai.budget?.trim() || old['Budget'];\n  const dates = ai.travel_dates?.trim() || old['Travel Dates'];\n  const travellers = ai.number_of_travellers?.toString().trim() || old['Number of Travellers'];\n\n  return `${name} is looking for a holiday in ${destination} for ${travellers} travellers from ${dates} with a budget of ${budget}.`;\n})() }}\n",
+            "Number of Travellers": "={{ $('AI Agent').first().json.output.number_of_travellers?.toString().trim() || $('Get row(s) in sheet').first().json['Number of Travellers'] }}",
+            "Status": "={{ $('Get row(s) in sheet').first().json['Status'] }}"
+          },
+          "matchingColumns": [
+            "row_number"
+          ],
+          "schema": [
+            {
+              "id": "Customer Name",
+              "displayName": "Customer Name",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Destination",
+              "displayName": "Destination",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Budget",
+              "displayName": "Budget",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Travel Dates",
+              "displayName": "Travel Dates",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Number of Travellers",
+              "displayName": "Number of Travellers",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Customer Enquiry",
+              "displayName": "Customer Enquiry",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Status",
+              "displayName": "Status",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "row_number",
+              "displayName": "row_number",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "number",
+              "canBeUsedToMatch": true,
+              "readOnly": true,
+              "removed": false
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.7,
+      "position": [
+        2208,
+        64
+      ],
+      "id": "3289ed79-2a8e-46d8-9436-d9b322cb37a1",
+      "name": "Update row in sheet",
+      "onError": "continueErrorOutput"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "a50a2299-0dc7-41a4-925c-ff9e07ff2220",
+              "name": "response",
+              "value": "We couldn't identify a unique enquiry matching your details. Please contact the travel agency so we can confirm which enquiry you want to update.",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.5,
+      "position": [
+        2208,
+        256
+      ],
+      "id": "fa2c79d7-6c31-43ee-86e6-ac46fa491b56",
+      "name": "Update Blocked Message"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "3cd590d8-39fb-4923-a79f-49c9d7306658",
+              "name": "response",
+              "value": "Your holiday enquiry has been successfully updated. Thank you!",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.5,
+      "position": [
+        2432,
+        96
+      ],
+      "id": "67626336-4aea-421e-a9af-1a05d7c65f2e",
+      "name": "Update Success Message"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "95d7087c-fd38-4c5a-9acc-313e07e80d0d",
+              "name": "response",
+              "value": "Thank you! Your holiday enquiry has been received successfully. Our travel agency team can now review your request.",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.5,
+      "position": [
+        2352,
+        224
+      ],
+      "id": "c3413b4d-4b47-4abc-8e84-71cdc86127c7",
+      "name": "New Enquiry Success Message"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "1bc3a669-94d7-491c-84b0-21f8d5459789",
+              "name": "response",
+              "value": "={{ $json.output.response }}",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.5,
+      "position": [
+        1712,
+        -128
+      ],
+      "id": "05507594-3758-4530-b62a-f69111313961",
+      "name": "Chat Response"
+    },
+    {
+      "parameters": {
+        "action": "generate",
+        "dataPropertyName": "enquiry_id"
+      },
+      "type": "n8n-nodes-base.crypto",
+      "typeVersion": 2,
+      "position": [
+        816,
+        0
+      ],
+      "id": "361c55ad-0d26-41a0-ab90-b0c6ee329642",
+      "name": "Crypto"
+    },
+    {
+      "parameters": {
+        "documentId": {
+          "__rl": true,
+          "value": "REPLACE_WITH_SPREADSHEET_ID",
+          "mode": "id"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": "REPLACE_WITH_SHEET_NAME",
+          "mode": "name"
+        },
+        "filtersUI": {
+          "values": []
+        },
+        "options": {
+          "returnFirstMatch": false
+        }
+      },
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.7,
+      "position": [
+        1040,
+        0
+      ],
+      "id": "ace3e9ac-4eb6-4cbd-9584-fb9c62d60421",
+      "name": "Get row(s) in sheet1",
+      "alwaysOutputData": true
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 4
+          },
+          "conditions": [
+            {
+              "id": "99cf9a52-821b-4abc-bbf8-4816c5a4b2a7",
+              "leftValue": "={{ $json.is_duplicate }}",
+              "rightValue": "",
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.4,
+      "position": [
+        1488,
+        0
+      ],
+      "id": "b33e133f-7b87-4cde-8132-d3b87fd197e7",
+      "name": "If1"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "9074d3d4-bb87-492a-94b2-1029ff793f24",
+              "name": "response",
+              "value": "=We already have an enquiry matching your name, destination and travel dates. If you'd like to make changes, please provide your enquiry ID.",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.5,
+      "position": [
+        1904,
+        288
+      ],
+      "id": "9be1437c-5eba-4d77-9ead-a4159c390dc5",
+      "name": "Duplicate Enquiry Message"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "c699f522-3f46-4836-9bc8-a7b06a39fb04",
+              "name": "response",
+              "value": "Your holiday enquiry has been saved successfully, but we couldn't send the email notification to our team. Please contact the travel agency to ensure your enquiry is reviewed.",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.5,
+      "position": [
+        2112,
+        448
+      ],
+      "id": "a26ba16b-98ad-4862-8a33-c135b1c5a681",
+      "name": "Email Failure Message"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "e6fe6e35-e944-41ff-813d-47cbec4fd5a1",
+              "name": "response",
+              "value": "Sorry, we couldn't save your holiday enquiry due to a technical issue. Please try again later or contact the travel agency directly.",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.5,
+      "position": [
+        1840,
+        496
+      ],
+      "id": "db471de4-29c1-40bf-9877-c41f9532e99b",
+      "name": "Google Sheets Failure Message"
+    },
+    {
+      "parameters": {
+        "jsCode": "\nconst rows = $input.all().map(item => item.json);\nconst enquiry = $('AI Agent').first().json.output;\n\nconst normalise = value =>\n  String(value ?? '')\n    .trim()\n    .toLowerCase()\n    .replace(/\\s+/g, ' ')\n    .replace(/[‐‑‒–—−]/g, '-');\n\nconst isDuplicate = rows.some(row =>\n  normalise(row['Customer Name']) === normalise(enquiry.customer_name) &&\n  normalise(row['Destination']) === normalise(enquiry.destination) &&\n  normalise(row['Travel Dates']) === normalise(enquiry.travel_dates)\n);\n\nreturn [{ json: { is_duplicate: isDuplicate } }];\n"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1264,
+        0
+      ],
+      "id": "bf8edf06-4a31-42d3-97a1-a7129075f974",
+      "name": "Code in JavaScript"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "7bbdde2e-7399-4b4b-8273-487e5798dba5",
+              "name": "response",
+              "value": "Sorry, we couldn't update your holiday enquiry due to a technical issue. Please try again later or contact the travel agency for assistance.",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.5,
+      "position": [
+        2592,
+        -32
+      ],
+      "id": "560b3488-4f1c-49d1-a52e-aefdae124c75",
+      "name": "Update Failure Message"
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "When chat message received": {
+      "main": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Google Gemini Chat Model": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Simple Memory": {
+      "ai_memory": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "ai_memory",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "AI Agent": {
+      "main": [
+        [
+          {
+            "node": "Switch",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Structured Output Parser": {
+      "ai_outputParser": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "ai_outputParser",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Switch": {
+      "main": [
+        [
+          {
+            "node": "Chat Response",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Crypto",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Get row(s) in sheet",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Append row in sheet": {
+      "main": [
+        [
+          {
+            "node": "Send a message",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Google Sheets Failure Message",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get row(s) in sheet": {
+      "main": [
+        [
+          {
+            "node": "If",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "If": {
+      "main": [
+        [
+          {
+            "node": "Update row in sheet",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Update Blocked Message",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Update row in sheet": {
+      "main": [
+        [
+          {
+            "node": "Update Success Message",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Update Failure Message",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Send a message": {
+      "main": [
+        [
+          {
+            "node": "New Enquiry Success Message",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Email Failure Message",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Crypto": {
+      "main": [
+        [
+          {
+            "node": "Get row(s) in sheet1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get row(s) in sheet1": {
+      "main": [
+        [
+          {
+            "node": "Code in JavaScript",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "If1": {
+      "main": [
+        [
+          {
+            "node": "Duplicate Enquiry Message",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Append row in sheet",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Code in JavaScript": {
+      "main": [
+        [
+          {
+            "node": "If1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate"
+  },
+  "nodeGroups": [],
+  "tags": []
+}
